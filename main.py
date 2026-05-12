@@ -5,13 +5,13 @@ import numpy as np
 import plotly.graph_objects as go
 from ftplib import FTP
 
-# 1. 앱 기본 설정
-st.set_page_config(page_title="Q_Alpha v2.0 Global Scanner", layout="wide")
-st.title("🚀 Q_Alpha v2.0 나스닥 전체 스캐너")
+# 1. 앱 설정
+st.set_page_config(page_title="Q_Alpha v2.0 Top 50", layout="wide")
+st.title("🏆 Q_Alpha v2.0 나스닥 고득점 Top 50 스캐너")
 
-# 2. 나스닥 전체 종목 리스트 가져오기 (실시간 수집)
-@st.cache_data(ttl=86400) # 리스트는 하루에 한 번만 업데이트
-def get_nasdaq_symbols():
+# 2. 나스닥 전체 리스트 가져오기
+@st.cache_data(ttl=86400)
+def get_nasdaq_list():
     try:
         ftp = FTP('ftp.nasdaqtrader.com')
         ftp.login()
@@ -19,66 +19,76 @@ def get_nasdaq_symbols():
         lines = []
         ftp.retrlines('RETR nasdaqlisted.txt', lines.append)
         ftp.quit()
-        # 데이터 정리
-        data = [line.split('|') for line in lines[1:-1]]
-        df = pd.DataFrame(data, columns=lines[0].split('|'))
-        return df['Symbol'].tolist()
+        return [line.split('|')[0] for line in lines[1:-1]]
     except:
-        # FTP 실패 시 기존 질문자님 리스트를 기본값으로 사용
-        return ['FITB', 'NTRS', 'LNT', 'PAA', 'MO', 'SBUX', 'CAKE', 'ADAM', 'BIIB', 'WERN', 'HCSG', 'FFBC', 'VLY', 'MNST', 'HAS']
+        return ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'GOOGL', 'AMZN', 'META']
 
-all_nasdaq = get_nasdaq_symbols()
-st.sidebar.write(f"현재 나스닥 상장 종목 수: {len(all_nasdaq)}개")
-
-# 3. 분석 대상 선택 (서버 과부하 방지를 위해 상위 N개 선택 가능하게)
-scan_count = st.sidebar.slider("스캔할 종목 수", 10, 100, 30)
-target_tickers = all_nasdaq[:scan_count]
-
-@st.cache_data(ttl=3600)
-def get_safe_data(ticker):
+# 3. 핵심 분석 함수 (image_40.png 오류 방지 적용)
+def analyze_stock(ticker):
     try:
         df = yf.download(ticker, period='1y', interval='1d', progress=False)
-        if df.empty or len(df) < 50: return None
-        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+        if df.empty or len(df) < 60: return None
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
         
-        df = df.copy().astype(float)
-        df['SMA20'] = df['Close'].rolling(20).mean()
-        df['SMA50'] = df['Close'].rolling(50).mean()
-        df['ATR'] = (df['High'] - df['Low']).rolling(14).mean()
+        df = df.copy().dropna()
+        # 점수 계산 로직
+        close = df['Close'].astype(float)
+        sma20 = close.rolling(20).mean()
+        sma50 = close.rolling(50).mean()
+        vol = df['Volume'].astype(float)
         
-        # Q_Alpha v2.0 로직
-        df['P_Score'] = ((df['Close'] > df['SMA20']) & (df['SMA20'] > df['SMA50'])).astype(int) * 0.4
-        dist = np.abs(df['Close'] - df['SMA20']) / df['SMA20']
-        df['A_Score'] = (1 - dist).clip(0, 1) * 0.4
-        df['V_Score'] = (df['Volume'] > df['Volume'].rolling(20).mean()).astype(int) * 0.2
-        df['Total_Score'] = df['P_Score'] + df['A_Score'] + df['V_Score']
-        return df
+        # P-Score (정배열)
+        p_score = ((close > sma20) & (sma20 > sma50)).astype(int).iloc[-1] * 0.4
+        # A-Score (눌림목)
+        dist = np.abs(close.iloc[-1] - sma20.iloc[-1]) / sma20.iloc[-1]
+        a_score = max(0, (1 - dist)) * 0.4
+        # V-Score (거래량)
+        v_score = (vol.iloc[-1] > vol.rolling(20).mean().iloc[-1]).astype(int) * 0.2
+        
+        total_score = round(p_score + a_score + v_score, 2)
+        
+        # 토스 검색 가능 조건 (거래량 5만 주 이상)
+        if vol.iloc[-1] < 50000: return None
+        
+        return {
+            "Ticker": ticker,
+            "Score": total_score,
+            "Price": f"${round(float(close.iloc[-1]), 2)}",
+            "Volume": int(vol.iloc[-1]),
+            "Signal": "🔥 BUY" if close.iloc[-1] <= (sma20.iloc[-1] * 1.01) else "✅ Watch"
+        }
     except:
         return None
 
-# 4. 실시간 스캔 및 결과 표시
-st.subheader(f"📊 실시간 스캔 결과 (상위 {scan_count} 종목)")
-results = []
+# 4. 분석 실행 섹션
+nasdaq_symbols = get_nasdaq_list()
 
-with st.spinner("나스닥 데이터를 분석 중입니다..."):
-    for ticker in target_tickers:
-        df = get_safe_data(ticker)
-        if df is not None:
-            curr = df.iloc[-1]
-            entry_p = curr['SMA20'] * 1.01
-            target_p = entry_p + (curr['ATR'] * 2)
-            
-            if curr['Total_Score'] >= 0.7: # 필터링 기준: 0.7점 이상만 표시
-                results.append({
-                    "Ticker": ticker,
-                    "Score": round(float(curr['Total_Score']), 2),
-                    "Price": round(float(curr['Close']), 2),
-                    "Entry": round(float(entry_p), 2),
-                    "Target": round(float(target_p), 2),
-                    "Status": "🔥 BUY NOW" if curr['Low'] <= entry_p else "✅ Watch"
-                })
+st.sidebar.header("🕹️ 스캔 컨트롤")
+batch_size = st.sidebar.number_input("스캔할 종목 수 (최대 500 추천)", 10, 1000, 100)
+start_btn = st.sidebar.button("🚀 분석 시작")
 
-if results:
-    st.dataframe(pd.DataFrame(results).sort_values(by="Score", ascending=False))
+if start_btn:
+    all_results = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    # 서버 안정성을 위해 입력받은 수만큼 분석
+    scan_list = nasdaq_symbols[:batch_size] 
+    
+    for i, ticker in enumerate(scan_list):
+        status_text.text(f"분석 중: {ticker} ({i+1}/{len(scan_list)})")
+        res = analyze_stock(ticker)
+        if res:
+            all_results.append(res)
+        progress_bar.progress((i + 1) / len(scan_list))
+    
+    st.subheader(f"📈 분석 완료 (점수 상위 50개)")
+    if all_results:
+        # 점수 순으로 정렬 후 상위 50개 추출
+        top_50 = pd.DataFrame(all_results).sort_values(by="Score", ascending=False).head(50)
+        st.dataframe(top_50.style.background_gradient(subset=['Score'], cmap='RdYlGn'), use_container_width=True)
+    else:
+        st.warning("조건에 맞는 종목을 찾지 못했습니다.")
 else:
-    st.info("현재 조건에 맞는 종목이 없습니다. 스캔 범위를 늘려보세요.")
+    st.info("사이드바에서 '분석 시작' 버튼을 눌러주세요. (A~Z 순서대로 스캔하여 고득점주를 찾아냅니다.)")
