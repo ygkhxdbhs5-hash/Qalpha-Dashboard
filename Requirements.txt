@@ -1,5 +1,0 @@
-```text
-streamlit
-yfinance
-plotly
-```
