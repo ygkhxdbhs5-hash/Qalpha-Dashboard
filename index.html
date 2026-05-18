@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TacticalEye AI - AI-Powered Soccer Match Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: #0B0F19;
+            color: #FFFFFF;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .neon-green {
+            color: #00FF41;
+        }
+
+        .btn-neon {
+            background-color: #00FF41;
+            color: #0B0F19;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        .btn-neon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6), 0 10px 25px rgba(0, 255, 65, 0.2);
+        }
+
+        .btn-neon:active {
+            transform: translateY(0);
+        }
+
+        .btn-neon-pulsing {
+            background-color: #00FF41;
+            color: #0B0F19;
+            font-weight: 700;
+            animation: pulse-glow 2s infinite;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(0, 255, 65, 0.3), 0 0 40px rgba(0, 255, 65, 0.1);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(0, 255, 65, 0.6), 0 0 60px rgba(0, 255, 65, 0.2);
+            }
+        }
+
+        .card-dark {
+            background-color: #1a1f2e;
+            border: 1px solid #2a3045;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .card-dark:hover {
+            border-color: #00FF41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+
+        .video-player-mock {
+            background: linear-gradient(135deg, #1a1f2e 0%, #0f1319 100%);
+            border: 2px solid #2a3045;
+            border-radius: 8px;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-player-mock::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(0, 255, 65, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .play-button {
+            width: 80px;
+            height: 80px;
+            background-color: rgba(0, 255, 65, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+
+        .play-button:hover {
+            transform: scale(1.1);
+            background-color: #00FF41;
+        }
+
+        .play-button::after {
+            content: '▶';
+            color: #0B0F19;
+            font-size: 32px;
+            margin-left: 4px;
+        }
+
+        .timeline-button {
+            background-color: #2a3045;
+            border: 1px solid #3a4055;
+            color: #00FF41;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 4px;
+            white-space: nowrap;
+        }
+
+        .timeline-button:hover {
+            background-color: #00FF41;
+            color: #0B0F19;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+        }
+
+        .soccer-field {
+            background: linear-gradient(135deg, #1a3a1a 0%, #0d2c0d 100%);
+            border: 2px solid #00FF41;
+            border-radius: 8px;
+            aspect-ratio: 16 / 9;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .soccer-field::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            height: 90%;
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 4px;
+        }
+
+        .soccer-field::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px;
+            height: 85%;
+            background-color: rgba(0, 255, 65, 0.3);
+        }
+
+        .field-marker {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: #00FF41;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.6);
+        }
+
+        .player-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+        }
+
+        .player-red {
+            background-color: rgba(255, 100, 100, 0.8);
+            border: 2px solid #FF6464;
+            color: white;
+        }
+
+        .player-blue {
+            background-color: rgba(100, 150, 255, 0.8);
+            border: 2px solid #6496FF;
+            color: white;
+        }
+
+        .stat-metric {
+            background-color: rgba(0, 255, 65, 0.05);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-metric:hover {
+            background-color: rgba(0, 255, 65, 0.1);
+            border-color: rgba(0, 255, 65, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #A0A8B8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #00FF41;
+        }
+
+        .step-number {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #00FF41 0%, #00DD33 100%);
+            color: #0B0F19;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        .step-card {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .step-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 16px 0 8px 0;
+            color: #FFFFFF;
+        }
+
+        .step-card p {
+            font-size: 14px;
+            color: #A0A8B8;
+            line-height: 1.5;
+        }
+
+        .section-heading {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 16px;
+        }
+
+        .section-subheading {
+            font-size: 16px;
+            color: #A0A8B8;
+            line-height: 1.6;
+        }
+
+        .accent-gradient {
+            background: linear-gradient(90deg, #00FF41 0%, #00DD33 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @media (max-width: 768px) {
+            .section-heading {
+                font-size: 24px;
+            }
+
+            .section-subheading {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<nav class="sticky top-0 z-50 bg-opacity-95 backdrop-blur" style="background-color: rgba(11, 15, 25, 0.95); border-bottom: 1px solid rgba(0, 255, 65, 0.1);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div class="text-2xl font-bold">
+            <span class="text-white">Tactical</span><span class="neon-green">Eye</span><span class="text-white"> AI</span>
+        </div>
+        <button onclick="document.getElementById('cta-section').scrollIntoView({ behavior: 'smooth' });" class="btn-neon px-6 py-2.5 rounded-lg text-sm font-bold hidden sm:inline-block">
+            Analyze Our Match
+        </button>
+        <button onclick="document.getElementById('cta-section').scrollIntoView({ behavior: 'smooth' });" class="btn-neon px-4 py-2 rounded-lg text-xs font-bold sm:hidden">
+            Analyze
+        </button>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="min-h-screen flex flex-col justify-center items-center px-4 py-20 sm:py-32 bg-gradient-to-b from-[#0B0F19] via-[#0B0F19] to-[#1a1f2e]">
+    <div class="max-w-4xl text-center">
+        <h1 class="section-heading text-4xl sm:text-5xl md:text-6xl mb-6 leading-tight">
+            Just Upload Your Full Match Video. <span class="neon-green">AI Generates Highlights</span> and Tactical Reports in 5 Minutes.
+        </h1>
+        <p class="section-subheading text-base sm:text-lg mb-8 max-w-2xl mx-auto">
+            No more tedious editing. Automatically tags goals, shots, and missed passes, providing a professional-grade tactical minimap dashboard.
+        </p>
+        <button onclick="document.getElementById('cta-section').scrollIntoView({ behavior: 'smooth' });" class="btn-neon px-8 py-3.5 rounded-lg text-base sm:text-lg font-bold mb-8 inline-block">
+            Analyze Our Match for Free
+        </button>
+        <div class="mt-12 relative">
+            <div class="absolute inset-0 bg-gradient-to-r from-[#00FF41] to-[#00DD33] rounded-xl opacity-5 blur-2xl"></div>
+            <div class="relative bg-gradient-to-b from-[#1a1f2e] to-[#0f1319] border-2 border-[#00FF41] border-opacity-30 rounded-xl overflow-hidden">
+                <div class="aspect-video flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="text-6xl mb-3 opacity-50">▶</div>
+                        <p class="text-[#A0A8B8] text-sm">Example: Match Highlights Preview</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Feature Visualization Section -->
+<section class="py-20 px-4 bg-[#0B0F19]">
+    <div class="max-w-7xl mx-auto">
+        <h2 class="section-heading text-3xl sm:text-4xl text-center mb-12">
+            What You Get <span class="neon-green">Instantly</span>
+        </h2>
+
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Left Card: AI Auto-Highlight Tagging Viewer -->
+            <div class="card-dark p-6 sm:p-8">
+                <h3 class="text-xl sm:text-2xl font-bold mb-4">AI Auto-Highlight Tagging Viewer</h3>
+                <p class="text-[#A0A8B8] mb-6 text-sm sm:text-base">Every critical moment automatically identified and tagged</p>
+
+                <div class="video-player-mock mb-6">
+                    <div class="play-button"></div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 justify-center">
+                    <div class="timeline-button">#Goal</div>
+                    <div class="timeline-button">#Shot</div>
+                    <div class="timeline-button">#PassError</div>
+                    <div class="timeline-button">#Tackle</div>
+                </div>
+
+                <div class="mt-6 p-4 bg-[#0f1319] rounded-lg border border-[#2a3045]">
+                    <p class="text-xs sm:text-sm text-[#A0A8B8]">Timeline automatically segmented by event type • Click tags to jump to moments</p>
+                </div>
+            </div>
+
+            <!-- Right Card: Top-down Tactical Report -->
+            <div class="card-dark p-6 sm:p-8">
+                <h3 class="text-xl sm:text-2xl font-bold mb-4">Top-Down Tactical Minimap</h3>
+                <p class="text-[#A0A8B8] mb-6 text-sm sm:text-base">Real-time player positioning and tactical insights</p>
+
+                <div class="soccer-field mb-6 relative">
+                    <!-- Player markers simulation -->
+                    <div class="player-marker player-red" style="top: 25%; left: 20%;">R1</div>
+                    <div class="player-marker player-red" style="top: 35%; left: 35%;">R2</div>
+                    <div class="player-marker player-red" style="top: 50%; left: 15%;">R3</div>
+                    <div class="player-marker player-red" style="top: 65%; left: 30%;">R4</div>
+                    <div class="player-marker player-red" style="top: 75%; left: 20%;">R5</div>
+
+                    <div class="player-marker player-blue" style="top: 30%; left: 75%;">B1</div>
+                    <div class="player-marker player-blue" style="top: 45%; left: 80%;">B2</div>
+                    <div class="player-marker player-blue" style="top: 60%; left: 72%;">B3</div>
+                    <div class="player-marker player-blue" style="top: 70%; left: 85%;">B4</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="stat-metric">
+                        <div class="stat-label">Work Rate</div>
+                        <div class="stat-value">120%</div>
+                    </div>
+                    <div class="stat-metric">
+                        <div class="stat-label">Pass Accuracy</div>
+                        <div class="stat-value">85%</div>
+                    </div>
+                    <div class="stat-metric">
+                        <div class="stat-label">Possession</div>
+                        <div class="stat-value">62%</div>
+                    </div>
+                    <div class="stat-metric">
+                        <div class="stat-label">Shots on Goal</div>
+                        <div class="stat-value">8</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="py-20 px-4 bg-gradient-to-b from-[#0B0F19] to-[#1a1f2e]">
+    <div class="max-w-7xl mx-auto">
+        <h2 class="section-heading text-3xl sm:text-4xl text-center mb-4 mb-12">
+            How It Works
+        </h2>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Step 1 -->
+            <div class="step-card card-dark">
+                <div class="flex justify-center mb-6">
+                    <div class="step-number">1</div>
+                </div>
+                <h3>Submit Your Match Video</h3>
+                <p>Share your full match video link (YouTube or Google Drive)</p>
+            </div>
+
+            <!-- Arrow (visible on desktop) -->
+            <div class="hidden md:flex items-center justify-center">
+                <div class="text-3xl neon-green opacity-50">→</div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="step-card card-dark md:col-span-1">
+                <div class="flex justify-center mb-6">
+                    <div class="step-number">2</div>
+                </div>
+                <h3>AI Analysis Runs</h3>
+                <p>TacticalEye AI engine cuts highlights and extracts player positioning (5 minutes)</p>
+            </div>
+
+            <!-- Full-width arrow for mobile/tablet between step 2 and 3 -->
+            <div class="md:hidden flex justify-center py-2">
+                <div class="text-2xl neon-green opacity-50">↓</div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="step-card card-dark md:col-span-1">
+                <div class="flex justify-center mb-6">
+                    <div class="step-number">3</div>
+                </div>
+                <h3>Get Your Results</h3>
+                <p>Receive highlights and tactical PDF report via email or WhatsApp</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Lead Capture Section (CTA) -->
+<section id="cta-section" class="py-20 px-4 bg-[#0B0F19]">
+    <div class="max-w-2xl mx-auto text-center">
+        <h2 class="section-heading text-3xl sm:text-4xl mb-4">
+            Currently in Beta!
+        </h2>
+        <p class="section-subheading text-base sm:text-lg mb-8">
+            Apply for a Free Analysis for the First 10 Teams.
+        </p>
+        <p class="text-[#A0A8B8] mb-12 text-sm sm:text-base">
+            Click the button below to open our official application form and submit your video.
+        </p>
+
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLScWZfcgaOHyTCoeOIE5JbzUm27EM3o1Rw9MZtceRsDjxT8aoQ/viewform?usp=dialog" target="_blank" class="btn-neon-pulsing px-8 sm:px-12 py-4 sm:py-5 rounded-lg text-base sm:text-lg font-bold inline-block transition-all duration-300 hover:shadow-lg hover:scale-105">
+            Apply for Free AI Match Analysis
+        </a>
+
+        <p class="text-[#A0A8B8] text-xs sm:text-sm mt-8">
+            Takes less than 2 minutes to apply. No credit card required.
+        </p>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-[#0f1319] border-t border-[#2a3045] py-8 px-4">
+    <div class="max-w-7xl mx-auto text-center text-[#A0A8B8] text-sm">
+        <p>© 2026 TacticalEye AI. All rights reserved. | <span class="neon-green">Revolutionizing Soccer Analysis</span></p>
+    </div>
+</footer>
+
+</body>
+</html>
